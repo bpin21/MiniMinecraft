@@ -52,6 +52,8 @@ private:
     // milestone 1's Chunk VBO setup is completed.
     Cube m_geomCube;
 
+    int m_seed; // the random seed for the world
+
     OpenGLContext* mp_context;
 
 public:
@@ -88,4 +90,14 @@ public:
     // Initializes the Chunks that store the 64 x 256 x 64 block scene you
     // see when the base code is run.
     void CreateTestScene();
+
+    // get the height (y) of the terrain at the given x-z coords
+    int heightMapGrassland(int x, int z);
+    int heightMapMountains(int x, int z);
+    // "height" map of the biomes, determines which biome coords are in
+    float heightMapBiome(int x, int z);
+    // populate all terrain blocks for the given x-z coords
+    void setColumnAt(int x, int z);
+    void setColumnGrassland(int x, int z, int h);
+    void setColumnMountains(int x, int z, int h);
 };

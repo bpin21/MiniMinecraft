@@ -2,9 +2,10 @@
 #include "cube.h"
 #include <stdexcept>
 #include <iostream>
+#include "noise.h"
 
 Terrain::Terrain(OpenGLContext *context)
-    : m_chunks(), m_generatedTerrain(), m_geomCube(context), mp_context(context)
+    : m_chunks(), m_generatedTerrain(), m_geomCube(context), m_seed(Noise::irandom1()), mp_context(context)
 {}
 
 Terrain::~Terrain() {
@@ -83,13 +84,11 @@ bool Terrain::hasChunkAt(int x, int z) const {
     return m_chunks.find(toKey(16 * xFloor, 16 * zFloor)) != m_chunks.end();
 }
 
-
 uPtr<Chunk>& Terrain::getChunkAt(int x, int z) {
     int xFloor = static_cast<int>(glm::floor(x / 16.f));
     int zFloor = static_cast<int>(glm::floor(z / 16.f));
     return m_chunks[toKey(16 * xFloor, 16 * zFloor)];
 }
-
 
 const uPtr<Chunk>& Terrain::getChunkAt(int x, int z) const {
     int xFloor = static_cast<int>(glm::floor(x / 16.f));
@@ -136,7 +135,6 @@ Chunk* Terrain::instantiateChunkAt(int x, int z) {
         cPtr->linkNeighbor(chunkWest, Direction::XNEG);
     }
     return cPtr;
-    return cPtr;
 }
 
 // TODO: When you make Chunk inherit from Drawable, change this code so
@@ -156,7 +154,6 @@ void Terrain::draw(int minX, int maxX, int minZ, int maxZ, ShaderProgram *shader
         }
     }
 
-
 }
 
 
@@ -165,8 +162,9 @@ void Terrain::CreateTestScene()
     // Create the Chunks that will
     // store the blocks for our
     // initial world space
-    for(int x = 0; x < 64; x += 16) {
-        for(int z = 0; z < 64; z += 16) {
+    int chunks = 16;
+    for(int x = 0; x < chunks * 16; x += 16) {
+        for(int z = 0; z < chunks * 16; z += 16) {
             instantiateChunkAt(x, z);
         }
     }
@@ -175,44 +173,138 @@ void Terrain::CreateTestScene()
     // now exists.
     m_generatedTerrain.insert(toKey(0, 0));
 
-
-    // Create the basic terrain floor
-    for(int x = 0; x < 64; ++x) {
-        for(int z = 0; z < 64; ++z) {
-            if((x + z) % 2 == 0) {
-                setBlockAt(x, 128, z, BlockType::STONE);
-            }
-            else {
-                setBlockAt(x, 128, z, BlockType::DIRT);
-            }
+    // generate terrain
+    for (int x = 0; x < 16 * chunks; x++)
+    {
+        for (int z = 0; z < 16 * chunks; z++)
+        {
+            setColumnAt(x, z);
         }
     }
 
-
-    // Add "walls" for collision testing
-    for(int x = 0; x < 64; ++x) {
-        setBlockAt(x, 129, 0, BlockType::GRASS);
-        setBlockAt(x, 130, 0, BlockType::GRASS);
-        setBlockAt(x, 129, 63, BlockType::GRASS);
-        setBlockAt(0, 130, x, BlockType::GRASS);
-    }
-
-    // Add a central column
-    for(int y = 129; y < 140; ++y) {
-        setBlockAt(32, y, 32, BlockType::GRASS);
-    }
-
-    setBlockAt(32, 139, 32, BlockType::STONE);
-
-    for(int x = 0; x < 64; x += 16) {
-        for(int z = 0; z < 64; z += 16) {
-
+    // create VBO data for terrain
+    for(int x = 0; x < 16 * chunks; x += 16) {
+        for(int z = 0; z < 16 * chunks; z += 16) {
             Chunk* c = getChunkAt(x, z).get();
-
             c->createVBOdata();
-
         }
     }
 
+}
 
+
+// get the height of the given x-z coords - GRASSLAND
+int Terrain::heightMapGrassland(int x, int z)
+{
+    // use perturbed perlin noise to create grasslands
+    float min = 1.4;
+    float max = 2.6;
+    float h = Noise::hybridMultiFractalInv(x, z, m_seed, .6, 333);
+    //std::cout << h << std::endl;;
+    h = glm::clamp(h, min, max);
+    return 66 * glm::smoothstep(min, max, h) + 111;
+}
+
+// get the height of the given x-z coords - MOUNTAIN
+int Terrain::heightMapMountains(int x, int z)
+{
+    // use perlin noise based FBM to create mountains
+    float min = .9;
+    float max = 1.7;
+    float h = Noise::hybridMultiFractal(x, z, m_seed, .5, 200);
+    h = glm::clamp(h, min, max);
+    return 80 * glm::smoothstep(min, max, h) + 100;
+}
+
+// get the "height" of the biome map
+float Terrain::heightMapBiome(int x, int z)
+{
+    // use perlin-based noise map to LERP b/w biomes
+    float min = 1.5;
+    float max = 1.8;
+    float biomeScale = 2345;
+    float biome = Noise::hybridMultiFractal(x, z, m_seed, .9, biomeScale);
+    //std::cout << biome;// << std::endl;
+    biome = glm::clamp(biome, min, max);
+    biome = glm::smoothstep(min, max, biome);
+    //std::cout << ", " << biome << std::endl;
+    return biome;
+}
+
+// populate all terrain for given x-z cooreds (y column)
+void Terrain::setColumnAt(int x, int z)
+{
+    float biome = heightMapBiome(x, z);
+    // get the heights of each biome
+    int heightGrassland = heightMapGrassland(x, z);
+    int heightMountains = heightMapMountains(x, z);
+
+    // LERP between each biome's height map
+    int h = heightGrassland * (1 - biome) + heightMountains * biome;
+
+    // call biome specific column function based on larger value
+    if (biome > .5)
+    {
+        setColumnMountains(x, z, h);
+    } else {
+        setColumnGrassland(x, z, h);
+    }
+}
+
+// (helper) populate all terrain for given x-z coords (y column) : GRASSLAND BIOME
+void Terrain::setColumnGrassland(int x, int z, int h)
+{
+    int currentBlock = h;
+    // if height is lower than 138 : water
+    if (currentBlock < 138)
+    {
+        for (int y = 138; y > currentBlock; --y)
+        {
+            setBlockAt(x, y, z, BlockType::WATER);
+        }
+    }
+    // top layer : grass
+    if (currentBlock > 128)
+    {
+        setBlockAt(x, currentBlock, z, BlockType::GRASS);
+        currentBlock--;
+    }
+    // above 128 : dirt
+    for (; currentBlock >= 128; --currentBlock)
+    {
+        setBlockAt(x, currentBlock, z, BlockType::DIRT);
+    }
+    // below 128 : stone
+    for (; currentBlock >= 0; --currentBlock)
+    {
+        setBlockAt(x, currentBlock, z, BlockType::STONE);
+    }
+
+}
+
+// (helper) populate all terrain for given x-z coords (y column) : MOUNTAIN BIOME
+void Terrain::setColumnMountains(int x, int z, int h)
+{
+    int currentBlock = h;
+    // if height is lower than 138 : water
+
+    if (currentBlock < 138)
+    {
+        for (int y = 138; y > currentBlock; --y)
+        {
+            setBlockAt(x, y, z, BlockType::WATER);
+        }
+    }
+
+    // top layer (above 200) : snow
+    if (currentBlock > 200)
+    {
+        setBlockAt(x, currentBlock, z, BlockType::SNOW);
+        currentBlock--;
+    }
+    // below 200 : stone
+    for (; currentBlock >= 0; --currentBlock)
+    {
+        setBlockAt(x, currentBlock, z, BlockType::STONE);
+    }
 }
