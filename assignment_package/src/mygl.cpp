@@ -72,7 +72,7 @@ void MyGL::initializeGL()
     // using multiple VAOs, we can just bind one once.
     glBindVertexArray(vao);
 
-    m_terrain.CreateTestScene();
+    //m_terrain.CreateTestScene();
 }
 
 void MyGL::resizeGL(int w, int h) {
@@ -143,7 +143,26 @@ void MyGL::paintGL() {
 // terrain that surround the player (refer to Terrain::m_generatedTerrain
 // for more info)
 void MyGL::renderTerrain() {
-    m_terrain.draw(0, 16 * 16, 0, 16 * 16, &m_progLambert);
+
+    vec3 pos = m_player.mcr_position;
+
+    ivec2 corner = m_terrain.getTerrainCornerAt(pos.x, pos.z);
+
+    cout << "(" << corner.x << "," << corner.y << ")";
+
+    m_terrain.generateTerrain(corner.x, corner.y);
+    m_terrain.generateTerrain(corner.x - 64, corner.y);
+    m_terrain.generateTerrain(corner.x + 64, corner.y);
+    m_terrain.generateTerrain(corner.x, corner.y + 64);
+    m_terrain.generateTerrain(corner.x - 64, corner.y + 64);
+    m_terrain.generateTerrain(corner.x + 64, corner.y + 64);
+    m_terrain.generateTerrain(corner.x, corner.y - 64);
+    m_terrain.generateTerrain(corner.x - 64, corner.y - 64);
+    m_terrain.generateTerrain(corner.x + 64, corner.y - 64);
+
+
+
+    m_terrain.draw(corner.x - 64, corner.x + 128, corner.y - 64, corner.y + 128, &m_progLambert);
 }
 
 

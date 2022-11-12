@@ -17,6 +17,7 @@ class BlockType {
     static const BlockType DIRT;
     static const BlockType STONE;
     static const BlockType WATER;
+    static const BlockType SNOW;
 
     BlockType() : index(0), name("undefined")
     {}

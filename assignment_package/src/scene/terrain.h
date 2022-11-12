@@ -43,15 +43,6 @@ private:
     // in the Terrain will never be deleted until the program is terminated.
     std::unordered_set<int64_t> m_generatedTerrain;
 
-    // TODO: DELETE ALL REFERENCES TO m_geomCube AS YOU WILL NOT USE
-    // IT IN YOUR FINAL PROGRAM!
-    // The instance of a unit cube we can use to render any cube.
-    // Presently, Terrain::draw renders one instance of this cube
-    // for every non-EMPTY block within its Chunks. This is horribly
-    // inefficient, and will cause your game to run very slowly until
-    // milestone 1's Chunk VBO setup is completed.
-    Cube m_geomCube;
-
     int m_seed; // the random seed for the world
 
     OpenGLContext* mp_context;
@@ -70,6 +61,10 @@ public:
     // Assuming a Chunk exists at these coords,
     // return a mutable reference to it
     uPtr<Chunk>& getChunkAt(int x, int z);
+
+    ivec2 getTerrainCornerAt(int x, int z);
+
+
     // Assuming a Chunk exists at these coords,
     // return a const reference to it
     const uPtr<Chunk>& getChunkAt(int x, int z) const;
@@ -86,6 +81,8 @@ public:
     // described by the min and max coords, using the provided
     // ShaderProgram
     void draw(int minX, int maxX, int minZ, int maxZ, ShaderProgram *shaderProgram);
+
+    void generateTerrain(int x_start, int z_start);
 
     // Initializes the Chunks that store the 64 x 256 x 64 block scene you
     // see when the base code is run.

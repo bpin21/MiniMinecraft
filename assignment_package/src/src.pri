@@ -7,6 +7,7 @@ SOURCES += \
     $$PWD/mygl.cpp \
     $$PWD/scene/blocktype.cpp \
     $$PWD/scene/direction.cpp \
+    $$PWD/scene/noise.cpp \
     $$PWD/shaderprogram.cpp \
     $$PWD/drawable.cpp \
     $$PWD/cameracontrolshelp.cpp \
@@ -25,6 +26,7 @@ HEADERS += \
     $$PWD/mygl.h \
     $$PWD/scene/blocktype.h \
     $$PWD/scene/direction.h \
+    $$PWD/scene/noise.h \
     $$PWD/shaderprogram.h \
     $$PWD/drawable.h \
     $$PWD/cameracontrolshelp.h \

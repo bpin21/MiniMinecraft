@@ -1,15 +1,15 @@
 #include "terrain.h"
 #include "cube.h"
+#include "noise.h"
 #include <stdexcept>
 #include <iostream>
-#include "noise.h"
 
 Terrain::Terrain(OpenGLContext *context)
-    : m_chunks(), m_generatedTerrain(), m_geomCube(context), m_seed(Noise::irandom1()), mp_context(context)
+    : m_chunks(), m_generatedTerrain(), m_seed(Noise::irandom1()), mp_context(context)
 {}
 
 Terrain::~Terrain() {
-    m_geomCube.destroyVBOdata();
+    //TODO should we be destroying VBO data for each chunk
 }
 
 // Combine two 32-bit ints into one 64-bit int
@@ -84,11 +84,20 @@ bool Terrain::hasChunkAt(int x, int z) const {
     return m_chunks.find(toKey(16 * xFloor, 16 * zFloor)) != m_chunks.end();
 }
 
+
 uPtr<Chunk>& Terrain::getChunkAt(int x, int z) {
     int xFloor = static_cast<int>(glm::floor(x / 16.f));
     int zFloor = static_cast<int>(glm::floor(z / 16.f));
     return m_chunks[toKey(16 * xFloor, 16 * zFloor)];
 }
+
+ivec2 Terrain::getTerrainCornerAt(int x, int z) {
+    int xFloor = static_cast<int>(glm::floor(x / 64.f));
+    int zFloor = static_cast<int>(glm::floor(z / 64.f));
+    return ivec2(64 * xFloor, 64 * zFloor);
+}
+
+
 
 const uPtr<Chunk>& Terrain::getChunkAt(int x, int z) const {
     int xFloor = static_cast<int>(glm::floor(x / 16.f));
@@ -154,6 +163,48 @@ void Terrain::draw(int minX, int maxX, int minZ, int maxZ, ShaderProgram *shader
         }
     }
 
+
+}
+
+void Terrain::generateTerrain(int x_start, int z_start){
+
+    if(m_generatedTerrain.count(toKey(x_start, z_start)) > 0) {
+        return;
+    }
+
+    // Create the Chunks that will
+    // store the blocks for our
+    // initial world space
+    for(int x = x_start; x < x_start + 64; x += 16) {
+        for(int z = z_start; z < z_start + 64; z += 16) {
+            instantiateChunkAt(x, z);
+        }
+    }
+
+    // Tell our existing terrain set that
+    // the "generated terrain zone" at (0,0)
+    // now exists.
+    m_generatedTerrain.insert(toKey(x_start, z_start));
+
+    // generate terrain
+    for (int x = x_start; x < x_start + 64; x++)
+    {
+        for (int z = z_start; z < z_start + 64; z++)
+        {
+            setColumnAt(x, z);
+        }
+    }
+
+    // Create the Chunks that will
+    // store the blocks for our
+    // initial world space
+    for(int x = x_start; x < x_start + 64; x += 16) {
+        for(int z = z_start; z < z_start + 64; z += 16) {
+            Chunk* c = getChunkAt(x, z).get();
+            c->createVBOdata();
+        }
+    }
+
 }
 
 
@@ -162,9 +213,8 @@ void Terrain::CreateTestScene()
     // Create the Chunks that will
     // store the blocks for our
     // initial world space
-    int chunks = 16;
-    for(int x = 0; x < chunks * 16; x += 16) {
-        for(int z = 0; z < chunks * 16; z += 16) {
+    for(int x = 0; x < 64; x += 16) {
+        for(int z = 0; z < 64; z += 16) {
             instantiateChunkAt(x, z);
         }
     }
@@ -173,22 +223,45 @@ void Terrain::CreateTestScene()
     // now exists.
     m_generatedTerrain.insert(toKey(0, 0));
 
-    // generate terrain
-    for (int x = 0; x < 16 * chunks; x++)
-    {
-        for (int z = 0; z < 16 * chunks; z++)
-        {
-            setColumnAt(x, z);
+
+    // Create the basic terrain floor
+    for(int x = 0; x < 64; ++x) {
+        for(int z = 0; z < 64; ++z) {
+            if((x + z) % 2 == 0) {
+                setBlockAt(x, 128, z, BlockType::STONE);
+            }
+            else {
+                setBlockAt(x, 128, z, BlockType::DIRT);
+            }
         }
     }
 
-    // create VBO data for terrain
-    for(int x = 0; x < 16 * chunks; x += 16) {
-        for(int z = 0; z < 16 * chunks; z += 16) {
+
+    // Add "walls" for collision testing
+    for(int x = 0; x < 64; ++x) {
+        setBlockAt(x, 129, 0, BlockType::GRASS);
+        setBlockAt(x, 130, 0, BlockType::GRASS);
+        setBlockAt(x, 129, 63, BlockType::GRASS);
+        setBlockAt(0, 130, x, BlockType::GRASS);
+    }
+
+    // Add a central column
+    for(int y = 129; y < 140; ++y) {
+        setBlockAt(32, y, 32, BlockType::GRASS);
+    }
+
+    setBlockAt(32, 139, 32, BlockType::STONE);
+
+    for(int x = 0; x < 64; x += 16) {
+        for(int z = 0; z < 64; z += 16) {
+
             Chunk* c = getChunkAt(x, z).get();
+
             c->createVBOdata();
+
         }
     }
+
 
 }
 

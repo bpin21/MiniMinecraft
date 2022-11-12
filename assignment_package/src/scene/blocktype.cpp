@@ -19,3 +19,4 @@ const BlockType BlockType::GRASS = BlockType(1, "grass", true,  vec3(95.f, 159.f
 const BlockType BlockType::DIRT  = BlockType(2, "dirt", true,  vec3(121.f, 85.f, 58.f) / 255.f);
 const BlockType BlockType::STONE = BlockType(3, "stone", true,  vec3(0.5f));
 const BlockType BlockType::WATER = BlockType(4, "water", true,  vec3(0.f, 0.f, 0.75f));
+const BlockType BlockType::SNOW  = BlockType(5, "snow", true, vec3(1,1,1));
