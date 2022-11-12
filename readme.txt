@@ -1,5 +1,4 @@
-
-
+GAME ENGINE AND PLAYER MOVEMENT - HENRIQUE
 Mouse movement:
 
 Keyboard movement: I made each keyboard key add to the players acceleration by the direction
@@ -23,3 +22,45 @@ look vector, and then gridmarched to determine which axis the ray was hitting. D
 would determine when to place the block. For simplicity, only stone blocks can be placed. Similar logic was
 used for removing blocks, but identifying the axis was not necessary and all I had to do was set the block
 that was hit by my ray to zero.
+
+PROCEDURAL TERRAIN GENERATION - BEN
+Mountain Biome:
+places blocks (from top to bottom) : (SNOW*), (WATER**), STONE
+Grassland Biome:
+places blocks (from top to bottom : (WATER**), GRASS, DIRT, STONE
+ --- * Snow is only placed if height is greater than 200 
+ --- ** Water is placed above heightMap up to 128 (if height map < 128)
+ 
+ Mountain Biome Height Map: 
+  - multi-hybrid fractal brownian motion (FBM) : basis noise function = abs(perlin)
+    - H = .5
+    - octaves = 8
+    - perlin scale = 200
+  -> 80 * smoothstep(FBM) + 100
+  
+ Grassland Biome Height Map:
+ - multi hybrid fractal brownian motion (FBM) : basis noise function = 1 - abs(perlin)
+    - H = .6
+    - octaves = 8
+    - perlin scale = 300
+  -> 66 * smoothstep(FBM) + 111
+
+Biome Interpolation Map:
+- multi hybrid fractal brownian motion (FBM) : basis noise function = abs(perlin)
+    - H = .9
+    - octaves = 8
+    - perlin scale = 300
+ -> smoothStep(FBM)
+
+Biome Interpolation:
+- using the biome interpolation map as a weight (1 = fully mountain, 0 = fully grassland),
+  LERP between height maps of each biome
+- if weight > 0.5, populate coordinates with mountain blocks
+    - else populate with grassland blocks
+    
+Challenges:
+  - perlin noise showing 'tiles' based on scale factor, mitigated by smoothstep but still occurs occasionally
+  - when using smoothstep, the min and max values returned by FBM vary greatly based on parameters, need to be optimized each time parameters change
+  - many hours spent tweaking parameters to get desired results
+
+Terrain Rendering and Chunking (Rafael):
